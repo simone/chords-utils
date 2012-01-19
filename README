@@ -1,0 +1,11 @@
+# Creative Commons
+# @ Simone Federici
+#
+# 1) Il programma serve a alzare/abbassare di n semitoni gli spartiti.
+# 2) Inoltre trasforma gli accordi A,B,C... in formato "italiano" LA,SI,DO
+#    se lanciato con 0 semitoni fa solo la trasformazione
+# 3) La terza feature e' utile per spostare gli accordi sulla linea che precede 
+#    il testo anziche sulla successiva. 
+# 
+# Quasi quasi ci faccio un servizio Internet :-)
+
