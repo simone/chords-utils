@@ -46,11 +46,11 @@ def add_tones(input_lines=[], toni=0, su=0, peso=3.0):
         # if len(_from) -> Non sono accordi se le lettere presenti sulla linea 
         #                  sono pesantemente maggiori dei caratteri impiegati dagli accordi
         if len("".join(line.split())) > peso*float(len("".join(_from))):
-            lines.append(line)
+            lines.append(re.sub('\s+', " ", line))
         else:
 	    _to   = trasform(_from, toni)
             others = re.match(r"(.*)%s(.*)" % r"(.*)".join(_from), line).groups()
-            new = "".join(reduce(lambda x,y: x+y, zip(others, _to) + [tuple(others[-1])]))
+            new = "<b>%s</b>" % "".join(reduce(lambda x,y: x+y, zip(others, _to) + [tuple(others[-1])]))
             lines.insert(-su, new) if su else lines.append(new)
     return lines
 
@@ -74,22 +74,60 @@ class Resource(object):
     def GET(self):
         return self.to_html()
 
-    def POST(self, chords, tones, upper, peso):
-        return self.to_html(chords, 
+    def POST(self, name, chords, tones, upper, peso, method=None):
+        name = re.sub("\s+", "_", name).lower()
+        return self.to_html(name, chords, 
                             self.chords(chords, int(tones), int(upper), float(peso)),
-                            tones, upper, peso)
+                            tones, upper, peso, method)
 
-    def to_html(self, source="", compiled="", tones=2, upper=0, peso=3.0):
-        return """
-	   <html>
-	    <form method="POST">
-	     <textarea name="chords" style="width: 49%" rows=30>{source}</textarea>
-             <textarea disabled=true style="width: 49%" rows=30>{compiled}</textarea>
-             <br/>
-	     +/- tones: <input name="tones" value="{tones}"> up chord lines of <input name="upper" value="{upper}"> peso <input name="peso" value="{peso}">
-             <input type="submit"/><input type="button" onclick="window.location.href=window.location.href" value="reset" />
-	    </form>
-	   </html>""".format(**vars())
+    def to_html(self, name="", source="", compiled="", tones=2, upper=0, peso=3.0, method=None):
+        if not method:
+            mibemolle = compiled.lower().count("mib")
+            return """
+		   <html>
+            <head><script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+            <script>
+            var w, h, d_css;
+            function fullScreen(){
+                if ($('#full').val() == "Full Screen"){
+                    $('#compiled').siblings(".hideable").hide();
+                    w = $('#compiled').width();
+                    h = $('#compiled').height();
+                    $('#compiled').width($(window).width() - 15).height($(window).height() - 15);
+                    $('#full').val("Half Screen");
+                } else {
+                    $('#compiled').siblings(".hideable").show();
+                    $('#compiled').width(w).height(h);
+                    $('#full').val("Full Screen");
+                }
+            }
+            $('#compiled').dblclick(fullScreen);
+			$(document).keyup(function(e) {
+			  if (e.keyCode == 27) { fullScreen(); }   // esc
+			});
+            </script>
+            </head>
+            <body id="body" style="background-color: #FFFFDF;">
+			<form method="POST">
+             <div style="float: right">
+                 <input id="full" type="button" onclick="fullScreen()" value="Full Screen" />
+                 <input name="method" type="submit" value="Download"/>
+             </div>
+			 <div class="hideable">+/- tones: <input name="tones" value="%(tones)s"> up chord lines of <input name="upper" value="%(upper)s"> 
+             peso <input name="peso" value="%(peso)s">
+		         <input type="submit"/><input type="button" onclick="window.location.href=window.location.href" value="Reset" /><br/>
+                 <input id="name" name="name" value="%(name)s" style="width: 49%%"/> (%(mibemolle)s Mib)<br/>
+             </div>
+             
+			 <textarea id="chords" class="hideable" name="chords" style="width: 49%%; height: 80%%">%(source)s</textarea>
+		     <div id="compiled" disabled=true style="float: right; background: #FFFFDF; width: 47%%"><pre>%(compiled)s</pre></div>
+			</form>
+            </body>
+		   </html>""" % vars()
+        import cherrypy
+        cherrypy.response.headers['content-type'] = 'text/plain'
+        cherrypy.response.headers['content-disposition'] = 'attachment; filename=%s.txt' % name
+        return compiled.replace("<b>", "").replace("</b>", "")
 
     def chords(self, source, tones, upper, peso):    
         return "\n".join(add_tones(source.splitlines(), tones, upper, peso))
